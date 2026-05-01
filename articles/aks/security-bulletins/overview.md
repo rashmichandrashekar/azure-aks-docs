@@ -1,11 +1,12 @@
 ---
 title: Security bulletins for Azure Kubernetes Service (AKS)
 description: This article provides security/vulnerability related updates and troubleshooting guides for Azure Kubernetes Services (AKS).
-ms.date: 03/20/2026
+ms.date: 04/30/2026
 author: bcho
 ms.author: bahe
 ms.topic: concept-article
 ms.subservice: aks-security
+ai-usage: ai-assisted
 # Customer intent: "As a Kubernetes administrator, I want to access updated security bulletins for Azure Kubernetes Service, so that I can address vulnerabilities and ensure the security of my clusters and applications."
 ---
 
@@ -22,6 +23,41 @@ These updates cover security information related to the following AKS components
 - Azure Kubernetes Service (AKS)
 - Azure Kubernetes Service Node Image (AKS Node Image)
 - Azure Kubernetes Service Addons (AKS add-ons)
+
+---
+
+## AKS-2026-0003 Azure Monitor Container Insights add-on removes use of nodes/proxy permission
+
+**Published Date**: April 30, 2026
+
+### Description
+
+This bulletin provides an update regarding the [Azure Monitor Container Insights](/azure/azure-monitor/containers/container-insights-overview) add-on (`ama-logs`) and its use of the Kubernetes `nodes/proxy` permission.
+
+A [public disclosure](https://grahamhelton.com/blog/nodes-proxy-rce) on January 26, 2026 detailed how the `nodes/proxy` `GET` permission can be abused to execute commands in any pod on a reachable node by connecting directly to the Kubelet API on port 10250 over WebSockets. The Kubelet authorizes the WebSocket handshake based on the initial HTTP `GET` and does not perform a secondary authorization check for the `CREATE` verb expected for `/exec`, `/run`, `/attach`, and `/portforward` operations. The Kubernetes Security Team determined this behavior is working as intended and will not assign a CVE; the recommended long-term mitigation is the fine-grained Kubelet authorization model defined in [KEP-2862](https://github.com/kubernetes/enhancements/blob/master/keps/sig-node/2862-fine-grained-kubelet-authz/README.md), which graduates to GA in Kubernetes v1.33.
+
+The Azure Monitor Container Insights add-on previously included `nodes/proxy` in its RBAC ClusterRole to access Kubelet endpoints. To reduce the blast radius of a compromised add-on identity, the add-on no longer requests `nodes/proxy` on Kubernetes versions that support fine-grained Kubelet authorization. Instead, it requests the narrower `nodes/pods` subresource introduced by KEP-2862. On Kubernetes versions that do not yet support fine-grained Kubelet authorization, the add-on continues to request `nodes/proxy` because no equivalent narrower permission is available.
+
+### References
+
+- [Kubernetes Remote Code Execution Via Nodes/Proxy GET Permission](https://grahamhelton.com/blog/nodes-proxy-rce)
+- [KEP-2862: Fine-Grained Kubelet API Authorization](https://github.com/kubernetes/enhancements/blob/master/keps/sig-node/2862-fine-grained-kubelet-authz/README.md)
+- [Kubelet authentication/authorization](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/#fine-grained-authorization)
+- [microsoft/Docker-Provider#1609 - Add nodes/pods based on k8s version](https://github.com/microsoft/Docker-Provider/pull/1609)
+
+### Affected Components
+
+#### [**AKS Addons**](#tab/aks-addons)
+
+**Affected Versions**
+
+- Azure Monitor Container Insights add-on (`ama-logs`) versions prior to the release that includes the change from [microsoft/Docker-Provider#1609](https://github.com/microsoft/Docker-Provider/pull/1609).
+
+**Resolutions**
+
+- An updated Azure Monitor Container Insights add-on has been rolled out that removes the `nodes/proxy` permission from the add-on's ClusterRole on Kubernetes v1.33 and later, and instead grants only the narrower `nodes/pods` subresource enabled by KEP-2862. On Kubernetes versions earlier than v1.33, the add-on continues to use `nodes/proxy` because the fine-grained `nodes/pods` subresource is not available.
+- **No customer action is required.** The updated RBAC is applied automatically when the add-on is updated on your cluster.
+- Customers who define their own ClusterRoles that grant `nodes/proxy` `GET` should review whether they still require this permission, and prefer the fine-grained subresources from [KEP-2862](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/#fine-grained-authorization) (`nodes/metrics`, `nodes/stats`, `nodes/log`, `nodes/healthz`, `nodes/pods`, `nodes/configz`) on Kubernetes v1.33 or later.
 
 ---
 
