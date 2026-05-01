@@ -60,7 +60,6 @@ The Azure Monitor Container Insights add-on previously included `nodes/proxy` in
 - This issue is fixed on AKS v1.33 and later. On AKS v1.33+, the Container Insights add-on uses the narrower `nodes/pods` subresource enabled by KEP-2862 instead of `nodes/proxy`.
 - **Recommended action:** If you have Container Insights enabled on an AKS cluster running Kubernetes earlier than v1.33, upgrade your cluster to AKS v1.33 or later to remove this RCE risk. As additional defense in depth, restrict pod network access to the Kubelet API (port 10250).
 - On AKS v1.33 or later, **no customer action is required.** The updated RBAC is applied automatically.
-- Customers who define their own ClusterRoles that grant `nodes/proxy` `GET` should review whether they still require this permission, and prefer the fine-grained subresources from [KEP-2862](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/#fine-grained-authorization) (`nodes/metrics`, `nodes/stats`, `nodes/log`, `nodes/healthz`, `nodes/pods`, `nodes/configz`) on Kubernetes v1.33 or later.
 
 ---
 
